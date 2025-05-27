@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  namensdienst:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: namensdienst
+    ports:
+      - "5000:5000"
+    networks:
+      - taskgrid-net
+
+networks:
+  taskgrid-net:
+    driver: bridge
