@@ -1,0 +1,11 @@
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY namensdienst.py .
+
+EXPOSE 5000
+
+CMD ["python", "namensdienst.py"]
