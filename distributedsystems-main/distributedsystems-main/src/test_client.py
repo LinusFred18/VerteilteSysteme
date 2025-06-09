@@ -9,7 +9,7 @@ import string
 from datetime import datetime
 import os
 
-# Logging in Kosole und in taskgrid_test.log-Datei 
+# Logging in Konsole und in taskgrid_test.log-Datei 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(message)s',
@@ -23,6 +23,7 @@ logging.basicConfig(
 # Sie erstellt eine alternative zum standart client, welche darauf ausgelegt ist das System zu testen.
 # Dafür sendet sie alle 30 Sekunden eine zufällige Task an den Dispatcher.
 # Die Argumente für die Tasks werden auch zufällig generiert.
+# Die Ergebnisse werden in einer Log-Datei und in der Konsole ausgegeben.
 class TaskGridTestClient:
     def __init__(self, dispatcher_address):
         self.channel = grpc.insecure_channel(dispatcher_address)

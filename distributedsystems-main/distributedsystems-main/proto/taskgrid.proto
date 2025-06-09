@@ -2,90 +2,94 @@ syntax = "proto3";
 
 package taskgrid;
 
-// Task message definition
+// Task Nachricht Definition
+// Enthält alle Informationen über eine Aufgabe im System
 message Task {
-    int32 id = 1;
-    string type = 2;
-    string payload = 3;
-    string result = 4;
-    string status = 5;
-    int64 timestamp_created = 6;
-    int64 timestamp_completed = 7;
+    int32 id = 1;                    // Eindeutige ID der Aufgabe
+    string type = 2;                 // Typ der Aufgabe (z.B. reverse, sum, etc.)
+    string payload = 3;              // Eingabedaten für die Aufgabe
+    string result = 4;               // Ergebnis der Aufgabe
+    string status = 5;               // Status der Aufgabe (PENDING, COMPLETED, FAILED)
+    int64 timestamp_created = 6;     // Zeitstempel der Erstellung
+    int64 timestamp_completed = 7;    // Zeitstempel der Fertigstellung
 }
 
 // Client Service
+// Definiert die Schnittstelle zwischen Client und Dispatcher
 service ClientService {
-    rpc SendTask (SendTaskRequest) returns (SendTaskResponse);
-    rpc RequestResult (RequestResultRequest) returns (RequestResultResponse);
-    rpc GetTaskStats (TaskStatsRequest) returns (TaskStatsResponse);
+    rpc SendTask (SendTaskRequest) returns (SendTaskResponse);           // Sendet eine neue Aufgabe
+    rpc RequestResult (RequestResultRequest) returns (RequestResultResponse);  // Fragt das Ergebnis einer Aufgabe ab
+    rpc GetTaskStats (TaskStatsRequest) returns (TaskStatsResponse);     // Fragt Statistiken über Aufgaben ab
 }
 
 message SendTaskRequest {
-    string type = 1;
-    string payload = 2;
+    string type = 1;      // Typ der Aufgabe
+    string payload = 2;   // Eingabedaten
 }
 
 message SendTaskResponse {
-    int32 task_id = 1;
+    int32 task_id = 1;    // ID der erstellten Aufgabe
 }
 
 message RequestResultRequest {
-    int32 task_id = 1;
+    int32 task_id = 1;    // ID der Aufgabe, deren Ergebnis abgefragt wird
 }
 
 message RequestResultResponse {
-    Task task = 1;
+    Task task = 1;        // Die vollständige Aufgabe mit Ergebnis
 }
 
 // Worker Service
+// Definiert die Schnittstelle für die Verarbeitung von Aufgaben durch Worker
 service WorkerService {
-    rpc ProcessTask (Task) returns (ProcessTaskResponse);
+    rpc ProcessTask (Task) returns (ProcessTaskResponse);    // Verarbeitet eine einzelne Aufgabe
 }
 
 message ProcessTaskResponse {
-    string result = 1;
-    bool success = 2;
+    string result = 1;    // Ergebnis der Verarbeitung
+    bool success = 2;     // Erfolg der Verarbeitung
 }
 
 // Nameservice Service
+// Verwaltet die Registrierung und Suche von Workern im System
 service NameService {
-    rpc RegisterWorker (RegisterWorkerRequest) returns (RegisterWorkerResponse);
-    rpc LookupWorker (LookupWorkerRequest) returns (LookupWorkerResponse);
-    rpc DeregisterWorker (DeregisterWorkerRequest) returns (DeregisterWorkerResponse);
-    rpc GetWorkerStats (WorkerStatsRequest) returns (WorkerStatsResponse);
+    rpc RegisterWorker (RegisterWorkerRequest) returns (RegisterWorkerResponse);      // Registriert einen neuen Worker
+    rpc LookupWorker (LookupWorkerRequest) returns (LookupWorkerResponse);           // Sucht einen Worker für einen Aufgabentyp
+    rpc DeregisterWorker (DeregisterWorkerRequest) returns (DeregisterWorkerResponse); // Meldet einen Worker ab
+    rpc GetWorkerStats (WorkerStatsRequest) returns (WorkerStatsResponse);            // Liefert Statistiken über Worker
 }
 
 message RegisterWorkerRequest {
-    string type = 1;
-    string address = 2;
+    string type = 1;      // Typ des Workers
+    string address = 2;   // Netzwerkadresse des Workers
 }
 
 message RegisterWorkerResponse {
-    bool success = 1;
+    bool success = 1;     // Erfolg der Registrierung
 }
 
 message LookupWorkerRequest {
-    string type = 1;
+    string type = 1;      // Gesuchter Worker-Typ
 }
 
 message LookupWorkerResponse {
-    string address = 1;
+    string address = 1;   // Adresse des gefundenen Workers
 }
 
 message DeregisterWorkerRequest {
-    string address = 1;
+    string address = 1;   // Adresse des abzumeldenden Workers
 }
 
 message DeregisterWorkerResponse {
-    bool success = 1;
+    bool success = 1;     // Erfolg der Abmeldung
 }
 
 message WorkerStatsRequest {}
 
 message WorkerStatsResponse {
-    map<string, int32> worker_counts = 1;  // type -> count
-    repeated string worker_addresses = 2;   // list of all worker addresses
-    map<string, string> worker_types = 3;  // address -> type mapping
+    map<string, int32> worker_counts = 1;    // Anzahl der Worker pro Typ
+    repeated string worker_addresses = 2;     // Liste aller Worker-Adressen
+    map<string, string> worker_types = 3;    // Zuordnung von Adressen zu Typen
 }
 
 message TaskTimingStats {
