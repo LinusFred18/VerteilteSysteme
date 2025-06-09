@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package taskgrid;
+
+// Task message definition
+message Task {
+    int32 id = 1;
+    string type = 2;
+    string payload = 3;
+    string result = 4;
+    string status = 5;
+    int64 timestamp_created = 6;
+    int64 timestamp_completed = 7;
+}
+
+// Client Service
+service ClientService {
+    rpc SendTask (SendTaskRequest) returns (SendTaskResponse);
+    rpc RequestResult (RequestResultRequest) returns (RequestResultResponse);
+    rpc GetTaskStats (TaskStatsRequest) returns (TaskStatsResponse);
+}
+
+message SendTaskRequest {
+    string type = 1;
+    string payload = 2;
+}
+
+message SendTaskResponse {
+    int32 task_id = 1;
+}
+
+message RequestResultRequest {
+    int32 task_id = 1;
+}
+
+message RequestResultResponse {
+    Task task = 1;
+}
+
+// Worker Service
+service WorkerService {
+    rpc ProcessTask (Task) returns (ProcessTaskResponse);
+}
+
+message ProcessTaskResponse {
+    string result = 1;
+    bool success = 2;
+}
+
+// Nameservice Service
+service NameService {
+    rpc RegisterWorker (RegisterWorkerRequest) returns (RegisterWorkerResponse);
+    rpc LookupWorker (LookupWorkerRequest) returns (LookupWorkerResponse);
+    rpc DeregisterWorker (DeregisterWorkerRequest) returns (DeregisterWorkerResponse);
+    rpc GetWorkerStats (WorkerStatsRequest) returns (WorkerStatsResponse);
+}
+
+message RegisterWorkerRequest {
+    string type = 1;
+    string address = 2;
+}
+
+message RegisterWorkerResponse {
+    bool success = 1;
+}
+
+message LookupWorkerRequest {
+    string type = 1;
+}
+
+message LookupWorkerResponse {
+    string address = 1;
+}
+
+message DeregisterWorkerRequest {
+    string address = 1;
+}
+
+message DeregisterWorkerResponse {
+    bool success = 1;
+}
+
+message WorkerStatsRequest {}
+
+message WorkerStatsResponse {
+    map<string, int32> worker_counts = 1;  // type -> count
+    repeated string worker_addresses = 2;   // list of all worker addresses
+}
+
+message TaskTimingStats {
+    double avg_time = 1;
+    double max_time = 2;
+    double last_time = 3;
+    repeated double recent_times = 4;  // Last 100 processing times
+}
+
+message TaskStatsRequest {}
+
+message TaskStatsResponse {
+    int32 pending_tasks = 1;
+    map<string, TaskTimingStats> task_stats = 2;  // type -> timing stats
+}
+
+// Monitoring Service
+service MonitoringService {
+    rpc GetSystemStats (SystemStatsRequest) returns (SystemStatsResponse);
+}
+
+message SystemStatsRequest {}
+
+message SystemStatsResponse {
+    int32 active_workers = 1;
+    int32 pending_tasks = 2;
+    double avg_processing_time = 3;
+    map<string, bool> service_connections = 4;  // service name -> connection status
+    map<string, TaskTimingStats> task_type_stats = 5;  // type -> timing stats
+} 
