@@ -59,7 +59,6 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
             task_type_stats=self.stats["task_type_stats"]
         )
 
-<<<<<<< HEAD
     def _check_service_connection(self, address, service_name, max_retries=3):
         """Check connection to a service with retries."""
         for attempt in range(max_retries):
@@ -86,64 +85,28 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
         self.logger.error(f"Failed to connect to {service_name} after {max_retries} attempts")
         self.stats["service_connections"][service_name] = False
         return False
-=======
-    # überprüft welche service connection verfügbar sind
-    def _check_service_connection(self, address, service_name):
-        try:
-            with grpc.insecure_channel(address) as channel:
-
-                grpc.channel_ready_future(channel).result(timeout=2)
-                self.stats["service_connections"][service_name] = True
-                return True
-        except Exception as e:
-            self.logger.error(f"Failed to connect to {service_name} at {address}: {e}")
-            self.stats["service_connections"][service_name] = False
-            return False
->>>>>>> 6f5838081c5b35acb19bc2cf0ce61adcfa32a781
 
     # holt sich alle relevanten statistiken
     def _collect_stats(self):
         """Collect statistics from services."""
         while True:
             try:
-<<<<<<< HEAD
-                # Check service connections first
-                ns_connected = self._check_service_connection(self.nameservice_address, "nameservice")
-                disp_connected = self._check_service_connection(self.dispatcher_address, "dispatcher")
-
-                if not (ns_connected or disp_connected):
-                    self.logger.error("Could not connect to any services, waiting before retry...")
-                    time.sleep(5)
-                    continue
-
-                # Collect worker stats from nameservice if connected
-                if ns_connected:
-=======
                 # überprüft die service connections
                 self._check_service_connection(self.nameservice_address, "nameservice")
                 self._check_service_connection(self.dispatcher_address, "dispatcher")
 
                 # Holt die worker stats vom nameservice
                 if self.stats["service_connections"]["nameservice"]:
->>>>>>> 6f5838081c5b35acb19bc2cf0ce61adcfa32a781
                     with grpc.insecure_channel(self.nameservice_address) as channel:
                         nameservice = taskgrid_pb2_grpc.NameServiceStub(channel)
                         worker_stats = nameservice.GetWorkerStats(taskgrid_pb2.WorkerStatsRequest())
                         
-<<<<<<< HEAD
-                        # Get current active addresses and their types
-                        current_active_addresses = set(worker_stats.worker_addresses)
-                        current_time = time.time()
-                        
-                        # Update active worker list and all_workers tracking
-=======
                         # Updatet die worker stats
                         total_workers = sum(worker_stats.worker_counts.values())
                         self.stats["active_workers"] = total_workers
                         self.stats["worker_types"] = dict(worker_stats.worker_counts)
                         
                         # Updatet die active worker Liste
->>>>>>> 6f5838081c5b35acb19bc2cf0ce61adcfa32a781
                         active_workers = []
                         worker_types_count = defaultdict(int)
 
@@ -202,32 +165,8 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
                         dispatcher = taskgrid_pb2_grpc.ClientServiceStub(channel)
                         task_stats = dispatcher.GetTaskStats(taskgrid_pb2.TaskStatsRequest())
                         
-<<<<<<< HEAD
-                        # Get details of pending tasks
-                        pending_tasks = []
-                        for task_id in range(task_stats.task_counter):
-                            try:
-                                response = dispatcher.RequestResult(
-                                    taskgrid_pb2.RequestResultRequest(task_id=task_id)
-                                )
-                                if response.task.status == "PENDING":
-                                    pending_tasks.append({
-                                        "id": response.task.id,
-                                        "type": response.task.type,
-                                        "payload": response.task.payload,
-                                        "timestamp_created": response.task.timestamp_created,
-                                        "waiting_time": int(time.time()) - response.task.timestamp_created
-                                    })
-                            except grpc.RpcError:
-                                continue
-                        
-                        # Update task stats with actual count from details
-                        self.stats["pending_tasks_details"] = pending_tasks
-                        self.stats["pending_tasks"] = len(pending_tasks)
-=======
                         # Updated die task stats
                         self.stats["pending_tasks"] = task_stats.pending_tasks
->>>>>>> 6f5838081c5b35acb19bc2cf0ce61adcfa32a781
                         
                       
                         task_type_stats = {}
@@ -288,13 +227,5 @@ if __name__ == '__main__':
     # Starte gRPC server
     grpc_server = serve_grpc(nameservice_address, dispatcher_address, grpc_port)
     
-<<<<<<< HEAD
-    # Start REST server
-    serve_rest('0.0.0.0', rest_port)
-    
-    # Keep the gRPC server running
-    grpc_server.wait_for_termination() 
-=======
     # Starte REST Schnittstelle
     serve_rest('0.0.0.0', rest_port) 
->>>>>>> 6f5838081c5b35acb19bc2cf0ce61adcfa32a781
