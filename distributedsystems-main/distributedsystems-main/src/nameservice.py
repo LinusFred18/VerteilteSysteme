@@ -50,6 +50,20 @@ class NameService(taskgrid_pb2_grpc.NameServiceServicer):
                 self.logger.info(f"Deregistered worker at {address}")
         return taskgrid_pb2.DeregisterWorkerResponse(success=success)
 
+    # Gebe statistiken über die worker für die Monitoring komponente
+    def GetWorkerStats(self, request, context):
+        worker_counts = {}
+        all_addresses = []
+        
+        for worker_type, addresses in self.workers.items():
+            worker_counts[worker_type] = len(addresses)
+            all_addresses.extend(addresses)
+        
+        return taskgrid_pb2.WorkerStatsResponse(
+            worker_counts=worker_counts,
+            worker_addresses=all_addresses
+        )
+
 # Starten des RPC Servers
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -60,4 +74,4 @@ def serve():
     server.wait_for_termination()
 
 if __name__ == '__main__':
-    serve()
+    serve() 

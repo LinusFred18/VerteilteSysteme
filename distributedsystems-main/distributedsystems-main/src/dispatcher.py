@@ -22,12 +22,17 @@ class TaskDispatcher(taskgrid_pb2_grpc.ClientServiceServicer):
         self.task_counter = 0
         self.nameservice_address = nameservice_address
         self.logger = logging.getLogger("Dispatcher")
-        self.processing_times = defaultdict(list)
+        self.task_stats = defaultdict(lambda: {
+            'times': [],  # List to keep last 100 processing times
+            'max_time': 0.0,
+            'last_time': 0.0
+        })
         
         # Start task dispatcher thread
         self.dispatcher_thread = threading.Thread(target=self._dispatch_tasks)
         self.dispatcher_thread.daemon = True
         self.dispatcher_thread.start()
+    
     # Senden eines tasks
     def SendTask(self, request, context):
         task_id = self.task_counter
@@ -57,6 +62,25 @@ class TaskDispatcher(taskgrid_pb2_grpc.ClientServiceServicer):
             
         return taskgrid_pb2.RequestResultResponse(task=self.tasks[task_id])
 
+    def GetTaskStats(self, request, context):
+        task_stats = {}
+        
+        for task_type, stats in self.task_stats.items():
+            times = stats['times']
+            if times:
+                avg_time = sum(times) / len(times)
+                task_stats[task_type] = taskgrid_pb2.TaskTimingStats(
+                    avg_time=avg_time,
+                    max_time=stats['max_time'],
+                    last_time=stats['last_time'],
+                    recent_times=times[-100:]  # Last 100 times
+                )
+        
+        return taskgrid_pb2.TaskStatsResponse(
+            pending_tasks=self.task_queue.qsize(),
+            task_stats=task_stats
+        )
+    
     # der loop der den workern die tasks zuweißt und dabei die anderen Funktionen aufruft
     def _dispatch_tasks(self):
         while True:
@@ -80,8 +104,20 @@ class TaskDispatcher(taskgrid_pb2_grpc.ClientServiceServicer):
                         task.timestamp_completed = int(time.time())
                         
                         # Update processing time statistics
-                        processing_time = task.timestamp_completed - task.timestamp_created
-                        self.processing_times[task.type].append(processing_time)
+                        if response.success:
+                            processing_time = task.timestamp_completed - task.timestamp_created
+                            stats = self.task_stats[task.type]
+                            
+                            # Update last time
+                            stats['last_time'] = processing_time
+                            
+                            # Update max time
+                            stats['max_time'] = max(stats['max_time'], processing_time)
+                            
+                            # Add to times list, keeping last 100
+                            stats['times'].append(processing_time)
+                            if len(stats['times']) > 100:
+                                stats['times'] = stats['times'][-100:]
                         
                         self.logger.info(f"Task {task.id} completed with status {task.status}")
                         
