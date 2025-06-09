@@ -9,6 +9,9 @@ import json
 
 logging.basicConfig(level=logging.INFO)
 
+# Das ist Worker-Klasse. 
+# Sie registriert die Worker beim Namensdienst, verarbeitet die verschiedenen Aufgabentypen und sendet die Ergebnisse
+
 class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
     def __init__(self, worker_type, nameservice_address):
         self.type = worker_type
@@ -19,9 +22,14 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
             "sum": self._process_sum,
             "hash": self._process_hash,
             "upper": self._process_upper,
-            "wait": self._process_wait
+            "wait": self._process_wait,
+            "length": self._process_length,
+            "average": self._process_average,
+            "prime": self._process_prime,
+            "lower": self._process_lower
         }
 
+    # Verarbeiten der Aufgabe der Worker, die seinem vorgebenen Typ entsprechen
     def ProcessTask(self, request, context):
         self.logger.info(f"Processing task {request.id} of type {request.type}")
         
@@ -43,10 +51,39 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
                 success=False,
                 result=f"Error: {str(e)}"
             )
+    
+    # Aufgabe des Workers: Länge des Payloads bestimmen
+    def _process_length(self, payload):
+        return len(payload)   
+    
+    # Aufgabe des Workers: Durchschnittlicher Wert bestimmen
+    def _process_average(self, payload):
+        try:
+            numbers = json.loads(payload)
+            if not isinstance(numbers, list):
+                raise ValueError("Payload must be a JSON array of numbers")
+            if not numbers:
+                return 0
+            return sum(float(n) for n in numbers) / len(numbers)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON payload")
 
+    
+    # Aufgabe des Workers: Überprüfung, ob es eine Primzahl ist
+    def _process_prime(self, payload):
+        n = int(payload)
+        if n < 2:
+            return False
+        for i in range(2, int(n ** 0.5) + 1):
+            if n % i == 0:
+                return False
+        return True
+
+    # Aufgabe des Workers: Payload umdrehen
     def _process_reverse(self, payload):
         return payload[::-1]
 
+    # Aufgabe des Workers: Summe des Payloads bilden
     def _process_sum(self, payload):
         try:
             numbers = json.loads(payload)
@@ -56,12 +93,19 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
         except json.JSONDecodeError:
             raise ValueError("Invalid JSON payload")
 
+    # Aufgabe des Workers: Payload hashen
     def _process_hash(self, payload):
         return hashlib.sha256(payload.encode()).hexdigest()
 
+    # Aufgabe des Workers: Payload zu upper (großbuchstaben)
     def _process_upper(self, payload):
         return payload.upper()
+    
+    # Aufgabe des Workers: Payload zu lower (Kleinbuchstaben)
+    def _process_lower(self, payload):
+        return payload.lower()
 
+    # Aufgabe des Workers: Verzögerung (wait) wird eingebaut
     def _process_wait(self, payload):
         try:
             seconds = float(payload)
@@ -70,6 +114,7 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
         except ValueError:
             raise ValueError("Payload must be a number representing seconds to wait")
 
+    # Anmeldung beim Namensdienst
     def register_with_nameservice(self, address):
         while True:
             try:
@@ -86,24 +131,24 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
                         break
             except grpc.RpcError as e:
                 self.logger.error(f"Failed to register with nameservice: {e}")
-                time.sleep(5)  # Retry after 5 seconds
+                time.sleep(5)  # bei einem Fehler wird nach 5 Sekunden erneut versucht
 
+# Starte den rpc-Server
 def serve(worker_type, port, nameservice_address):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     worker = Worker(worker_type, nameservice_address)
     taskgrid_pb2_grpc.add_WorkerServiceServicer_to_server(worker, server)
     
-    # Use container name for registration
     container_name = f"worker-{worker_type}"
     address = f'{container_name}:{port}'
     server.add_insecure_port(f'[::]:{port}')
     server.start()
     
-    # Register with nameservice using container name
     worker.register_with_nameservice(address)
     
     logging.info(f"Worker of type {worker_type} started on port {port}")
     server.wait_for_termination()
+
 
 if __name__ == '__main__':
     import os

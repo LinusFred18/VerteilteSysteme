@@ -10,6 +10,11 @@ import threading
 
 logging.basicConfig(level=logging.INFO)
 
+# Das ist die Dispatcher Klasse. 
+# Sie verwaltet die task_queue, die speichert welche tasks zum ausführen an die worker verteilt werden müssen
+# Sie verteilt die Aufgaben an die Worker.
+# Sie kommuniziert mit dem Client indem sie Anfragen von ihm in die task_queue aufnimmt und die Ergebnisse an den Client zurück schickt.
+# Sie läuft mit gRPC auf Port 50052
 class TaskDispatcher(taskgrid_pb2_grpc.ClientServiceServicer):
     def __init__(self, nameservice_address):
         self.tasks = {}  # task_id -> Task
@@ -23,7 +28,7 @@ class TaskDispatcher(taskgrid_pb2_grpc.ClientServiceServicer):
         self.dispatcher_thread = threading.Thread(target=self._dispatch_tasks)
         self.dispatcher_thread.daemon = True
         self.dispatcher_thread.start()
-
+    # Senden eines tasks
     def SendTask(self, request, context):
         task_id = self.task_counter
         self.task_counter += 1
@@ -42,6 +47,7 @@ class TaskDispatcher(taskgrid_pb2_grpc.ClientServiceServicer):
         
         return taskgrid_pb2.SendTaskResponse(task_id=task_id)
 
+    # Anfordern der Ergebnisse eines Tasks 
     def RequestResult(self, request, context):
         task_id = request.task_id
         if task_id not in self.tasks:
@@ -51,6 +57,7 @@ class TaskDispatcher(taskgrid_pb2_grpc.ClientServiceServicer):
             
         return taskgrid_pb2.RequestResultResponse(task=self.tasks[task_id])
 
+    # der loop der den workern die tasks zuweißt und dabei die anderen Funktionen aufruft
     def _dispatch_tasks(self):
         while True:
             task = self.task_queue.get()
@@ -83,6 +90,7 @@ class TaskDispatcher(taskgrid_pb2_grpc.ClientServiceServicer):
                 task.result = f"Error: {str(e)}"
                 self.logger.error(f"Failed to process task {task.id}: {e}")
 
+# Starten des RPC Servers
 def serve(nameservice_address):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     dispatcher = TaskDispatcher(nameservice_address)

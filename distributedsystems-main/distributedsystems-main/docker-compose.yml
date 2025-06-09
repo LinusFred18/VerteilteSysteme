@@ -93,6 +93,63 @@ services:
     networks:
       - taskgrid
 
+      
+  worker-length:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=length
+        - PORT=50065
+    environment:
+      - NAMESERVICE_ADDRESS=nameservice:50051
+    depends_on:
+      - nameservice
+    networks:
+      - taskgrid
+
+  worker-average:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=average
+        - PORT=50066
+    environment:
+      - NAMESERVICE_ADDRESS=nameservice:50051
+    depends_on:
+      - nameservice
+    networks:
+      - taskgrid
+
+  worker-lower:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=lower
+        - PORT=50067
+    environment:
+      - NAMESERVICE_ADDRESS=nameservice:50051
+    depends_on:
+      - nameservice
+    networks:
+      - taskgrid
+
+  worker-prime:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=prime
+        - PORT=50068
+    environment:
+      - NAMESERVICE_ADDRESS=nameservice:50051
+    depends_on:
+      - nameservice
+    networks:
+      - taskgrid
+
   monitoring:
     build:
       context: .

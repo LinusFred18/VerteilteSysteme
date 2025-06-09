@@ -9,7 +9,7 @@ import string
 from datetime import datetime
 import os
 
-# Configure logging to both file and console
+# Logging in Kosole und in taskgrid_test.log-Datei 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(message)s',
@@ -25,8 +25,9 @@ class TaskGridTestClient:
         self.stub = taskgrid_pb2_grpc.ClientServiceStub(self.channel)
         self.logger = logging.getLogger("TaskGridTestClient")
 
+    # Methode generiert random Payloads für die verschiednen Tasks der Worker
     def generate_random_task(self):
-        task_types = ["reverse", "sum", "hash", "upper", "wait"]
+        task_types = ["reverse", "sum", "hash", "upper", "length", "average", "prime", "lower", "wait"]
         task_type = random.choice(task_types)
         
         if task_type == "reverse":
@@ -38,11 +39,21 @@ class TaskGridTestClient:
             payload = ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(10, 30)))
         elif task_type == "upper":
             payload = ''.join(random.choices(string.ascii_letters + string.digits + " ", k=random.randint(5, 20)))
+        elif task_type == "length":
+            payload = ''.join(random.choices(string.ascii_letters + string.digits + " ", k=random.randint(5, 20)))
+        elif task_type == "average":
+            numbers = [random.randint(1, 100) for _ in range(random.randint(2, 10))]
+            payload = json.dumps(numbers)
+        elif task_type == "prime":
+            payload = str(random.randint(1, 120))
+        elif task_type == "lower":
+            payload = ''.join(random.choices(string.ascii_letters + string.digits + " ", k=random.randint(5, 20)))
         else:  # wait
             payload = str(random.uniform(0.5, 3.0))
 
         return task_type, payload
 
+    # Versendet die Aufgabe mit Payload an die Worker
     def send_task(self, task_type, payload):
         try:
             response = self.stub.SendTask(
@@ -57,6 +68,7 @@ class TaskGridTestClient:
             self.logger.error(f"Failed to send task: {e}")
             raise
 
+    # Erhält die Ergebnisse der Tasks vom Worker
     def get_result(self, task_id, wait=True, timeout=30):
         start_time = time.time()
         while True:
@@ -82,12 +94,10 @@ class TaskGridTestClient:
                 raise
 
 def main():
-    # Use Docker service name from environment variable
     dispatcher_address = os.getenv('DISPATCHER_ADDRESS', 'dispatcher:50052')
     client = TaskGridTestClient(dispatcher_address)
     
-    print("Starting continuous task testing. Press Ctrl+C to stop.")
-    print(f"Results are being logged to taskgrid_tests.log")
+    print("Start: ")
     
     try:
         while True:
@@ -96,7 +106,7 @@ def main():
                 task_id = client.send_task(task_type, payload)
                 result = client.get_result(task_id)
                 
-                # Additional statistics logging
+                # Output für einzelne Tasks mit Zeit, Task-Typ, Input, Output, etc.
                 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 logging.info(f"TEST SUMMARY [{current_time}]:")
                 logging.info(f"  Task Type: {task_type}")
@@ -107,7 +117,7 @@ def main():
             except Exception as e:
                 logging.error(f"Error in test iteration: {e}")
             
-            # Wait 30 seconds before next task
+            # 30 Sekunden Verzögerung bis zum nächsten Task
             time.sleep(30)
             
     except KeyboardInterrupt:

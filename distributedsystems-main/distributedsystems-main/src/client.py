@@ -7,12 +7,15 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+# Das ist die Client Klasse.
+# Sie sendet die Tasks an den Dispatcher und empfängt die Antwort dann auch wieder.
 class TaskGridClient:
     def __init__(self, dispatcher_address):
         self.channel = grpc.insecure_channel(dispatcher_address)
         self.stub = taskgrid_pb2_grpc.ClientServiceStub(self.channel)
         self.logger = logging.getLogger("TaskGridClient")
 
+    # sendete eine task (an den dispatcher, bei uns)
     def send_task(self, task_type, payload):
         try:
             response = self.stub.SendTask(
@@ -26,7 +29,7 @@ class TaskGridClient:
         except grpc.RpcError as e:
             self.logger.error(f"Failed to send task: {e}")
             raise
-
+    # frägt die Ergebnisse der tasks ab
     def get_result(self, task_id, wait=True, timeout=30):
         start_time = time.time()
         while True:
@@ -51,12 +54,13 @@ class TaskGridClient:
                 self.logger.error(f"Failed to get result: {e}")
                 raise
 
+#wird einmal aufgerufen um zu schauen ob alles die Beispiele funktioniert
 def main():
     import os
     dispatcher_address = os.getenv('DISPATCHER_ADDRESS', 'localhost:50052')
     client = TaskGridClient(dispatcher_address)
     
-    # Example tasks
+    # Beispielhafte tasks
     tasks = [
         ("reverse", "Hello, World!"),
         ("sum", json.dumps([1, 2, 3, 4, 5])),
