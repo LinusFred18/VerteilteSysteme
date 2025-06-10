@@ -73,7 +73,7 @@ class TaskGridTestClient:
             raise
 
     # Erhält die Ergebnisse der Tasks vom Worker
-    def get_result(self, task_id, wait=True, timeout=30):  # Increased timeout to 30 seconds
+    def get_result(self, task_id, wait=True, timeout=30):
         start_time = time.time()
         while True:
             try:
@@ -98,7 +98,7 @@ class TaskGridTestClient:
                     self.logger.warning(f"Task {task_id} did not complete within {timeout} seconds")
                     return None
                     
-                time.sleep(1)  # Poll every second
+                time.sleep(1)  # jede sekunde
                 
             except grpc.RpcError as e:
                 self.logger.error(f"Failed to get result: {e}")

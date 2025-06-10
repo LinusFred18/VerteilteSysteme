@@ -23,8 +23,8 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
         self.type = worker_type
         self.nameservice_address = nameservice_address
         self.logger = logging.getLogger(f"Worker-{worker_type}")
-        self.address = None  # Will be set during registration
-        self.running = True  # Flag to control heartbeat thread
+        self.address = None  # Bei registrierung beim namensdienst
+        self.running = True  # für heartbeat
         self.task_processors = {
             "reverse": self._process_reverse,
             "sum": self._process_sum,
@@ -113,7 +113,7 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
     def _process_lower(self, payload):
         return payload.lower()
 
-    # Aufgabe des Workers: Verzögerung (wait) wird eingebaut
+    # Aufgabe des Workers: Verzögerung (wait)
     def _process_wait(self, payload):
         try:
             seconds = float(payload)
@@ -122,8 +122,8 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
         except ValueError:
             raise ValueError("Payload must be a number representing seconds to wait")
 
+    # periodischer heartbeat an den namensdienst
     def _send_heartbeat(self):
-        """Periodically re-register with the nameservice"""
         while self.running:
             try:
                 with grpc.insecure_channel(self.nameservice_address) as channel:
@@ -138,7 +138,7 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
                         self.logger.warning("Failed to send heartbeat")
             except Exception as e:
                 self.logger.error(f"Error sending heartbeat: {e}")
-            time.sleep(2)  # Send heartbeat every 2 seconds
+            time.sleep(2)  # Sende heartbeat alle 2s
 
     # Anmeldung beim Namensdienst
     def register_with_nameservice(self, address):
@@ -155,7 +155,7 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
                     )
                     if response.success:
                         self.logger.info(f"Successfully registered with nameservice at {address}")
-                        # Start heartbeat thread after successful registration
+                        # Starte heartbeat
                         self.heartbeat_thread = threading.Thread(target=self._send_heartbeat)
                         self.heartbeat_thread.daemon = True
                         self.heartbeat_thread.start()
@@ -164,9 +164,9 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
                 self.logger.error(f"Failed to register with nameservice: {e}")
                 time.sleep(5)  # bei einem Fehler wird nach 5 Sekunden erneut versucht
 
+    # Abmelden vom Namensdienst
     def deregister_from_nameservice(self):
-        """Deregister the worker from the nameservice"""
-        self.running = False  # Stop heartbeat thread
+        self.running = False 
         if not self.address:
             return
             
@@ -185,8 +185,8 @@ class Worker(taskgrid_pb2_grpc.WorkerServiceServicer):
         except grpc.RpcError as e:
             self.logger.error(f"Failed to deregister from nameservice: {e}")
 
+# Freien port finden
 def find_free_port():
-    """Find a free port by creating a temporary socket."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('', 0))
         s.listen(1)
@@ -195,7 +195,7 @@ def find_free_port():
 
 # Starte den rpc-Server
 def serve(worker_type, port, nameservice_address):
-    # If port is 0, find a free port
+    # wenn port == 0, neuen port finden
     if port == 0:
         port = find_free_port()
 
@@ -203,10 +203,9 @@ def serve(worker_type, port, nameservice_address):
     worker = Worker(worker_type, nameservice_address)
     taskgrid_pb2_grpc.add_WorkerServiceServicer_to_server(worker, server)
     
-    # Use container hostname (which will be the service name in docker-compose)
     hostname = socket.gethostname()
     address = f'{hostname}:{port}'
-    worker.address = address  # Store address for deregistration
+    worker.address = address
     
     server.add_insecure_port(f'[::]:{port}')
     server.start()
@@ -215,11 +214,11 @@ def serve(worker_type, port, nameservice_address):
     
     logging.info(f"Worker of type {worker_type} started on {address}")
     
-    # Set up signal handlers for graceful shutdown
+    # shutdown handeln (abmelden von namensdienst und server stoppen)
     def handle_shutdown(signum, frame):
         logging.info("Received shutdown signal, deregistering worker...")
         worker.deregister_from_nameservice()
-        server.stop(grace=5)  # Give 5 seconds for ongoing tasks to complete
+        server.stop(grace=5)  # 5s um task abzuschließen
         sys.exit(0)
     
     signal.signal(signal.SIGTERM, handle_shutdown)

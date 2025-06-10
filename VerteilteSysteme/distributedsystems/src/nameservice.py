@@ -16,11 +16,11 @@ logging.basicConfig(level=logging.INFO)
 # Sie läuft über gRPC auf Port 50051
 class NameService(taskgrid_pb2_grpc.NameServiceServicer):
     def __init__(self):
-        self.workers = defaultdict(dict)  # key: worker_type -> {address: {last_seen, status}}
+        self.workers = defaultdict(dict)  # key: worker_type -> value: {address: {last_seen, status}}
         self.logger = logging.getLogger("NameService")
-        self.worker_timeout = 5  # seconds before a worker is considered inactive
+        self.worker_timeout = 5  # Sekunden bis ein Worker als inaktiv gilt
         
-        # Start cleanup thread
+        # Cleanup Thread zum aufräumen inaktiver Worker
         self.cleanup_thread = threading.Thread(target=self._cleanup_inactive_workers, daemon=True)
         self.cleanup_thread.start()
 
@@ -30,7 +30,7 @@ class NameService(taskgrid_pb2_grpc.NameServiceServicer):
         worker_address = request.address
         current_time = time.time()
 
-        # If worker exists and was inactive, log reactivation
+        # Reaktivierung eines inaktiven workers
         if (worker_address in self.workers[worker_type] and 
             self.workers[worker_type][worker_address]["status"] == "INACTIVE"):
             self.logger.info(f"Reactivating worker of type {worker_type} at {worker_address}")
@@ -47,7 +47,7 @@ class NameService(taskgrid_pb2_grpc.NameServiceServicer):
         worker_type = request.type
         current_time = time.time()
         
-        # Only consider active workers that have been seen recently
+        # Nur Worker die in letzter Zeit sich gemeldet haben
         available_workers = {
             addr: info["last_seen"]
             for addr, info in self.workers.get(worker_type, {}).items()
@@ -59,10 +59,9 @@ class NameService(taskgrid_pb2_grpc.NameServiceServicer):
             context.set_details(f"No workers available for type {worker_type}")
             return taskgrid_pb2.LookupWorkerResponse()
         
-        # Select the least recently used worker
+        # Wähle den am längsten inaktiven Worker
         selected_worker = min(available_workers.items(), key=lambda x: x[1])[0]
         
-        # Update last seen time for the selected worker
         self.workers[worker_type][selected_worker]["last_seen"] = current_time
         
         return taskgrid_pb2.LookupWorkerResponse(address=selected_worker)
@@ -73,7 +72,7 @@ class NameService(taskgrid_pb2_grpc.NameServiceServicer):
         success = False
         for worker_type in list(self.workers.keys()):
             if address in self.workers[worker_type]:
-                # Mark as inactive and update last_seen to current time
+                # Setze inaktiv und letzte Zeit
                 self.workers[worker_type][address]["status"] = "INACTIVE"
                 self.workers[worker_type][address]["last_seen"] = time.time()
                 success = True
@@ -86,39 +85,38 @@ class NameService(taskgrid_pb2_grpc.NameServiceServicer):
         worker_counts = defaultdict(lambda: {"active": 0, "inactive": 0})
         active_addresses = []
         inactive_addresses = []
-        worker_types_map = {}  # Map of address -> type
+        worker_types_map = {}  # address -> type
         
         for worker_type, workers in self.workers.items():
             for addr, info in workers.items():
                 time_since_last_seen = current_time - info["last_seen"]
                 worker_types_map[addr] = worker_type
                 
-                # Only consider a worker active if it's been seen recently
+                # Aktive Worker markieren
                 if time_since_last_seen < self.worker_timeout and info["status"] == "ACTIVE":
                     worker_counts[worker_type]["active"] += 1
                     active_addresses.append(addr)
                 else:
-                    # If we haven't seen an active worker recently, mark it inactive
+                    # Inaktive Worker markieren
                     if info["status"] == "ACTIVE":
                         info["status"] = "INACTIVE"
                         self.logger.info(f"Marked worker as inactive due to timeout: {addr}")
                     worker_counts[worker_type]["inactive"] += 1
                     inactive_addresses.append(addr)
         
-        # Convert defaultdict to regular dict for response
         worker_counts_response = {
-            worker_type: counts["active"]  # Only count active workers
+            worker_type: counts["active"]  # Nur aktive Worker zählen
             for worker_type, counts in worker_counts.items()
         }
         
         return taskgrid_pb2.WorkerStatsResponse(
             worker_counts=worker_counts_response,
-            worker_addresses=active_addresses,  # Only include active workers
+            worker_addresses=active_addresses,
             worker_types=worker_types_map
         )
 
+    # Aufräumen inaktiver Worker nach einem gewissen Intervall
     def _cleanup_inactive_workers(self):
-        """Periodically clean up inactive workers"""
         while True:
             try:
                 current_time = time.time()
@@ -126,23 +124,22 @@ class NameService(taskgrid_pb2_grpc.NameServiceServicer):
                     for addr, info in list(self.workers[worker_type].items()):
                         time_since_last_seen = current_time - info["last_seen"]
                         
-                        # Mark workers as inactive if we haven't seen them recently
+                        # Inaktive Worker finden
                         if time_since_last_seen >= self.worker_timeout and info["status"] == "ACTIVE":
                             self.workers[worker_type][addr]["status"] = "INACTIVE"
                             self.logger.info(f"Marked worker as inactive due to timeout: {addr}")
                             
-                        # Remove workers that have been inactive for a while
-                        if time_since_last_seen >= 60:  # Remove after 1 minute of inactivity
+                        # Inaktive Worker nach 60 Sekunden entfernen
+                        if time_since_last_seen >= 60: 
                             del self.workers[worker_type][addr]
                             self.logger.info(f"Removed inactive worker: {addr}")
                             
-                    # Clean up empty worker types
                     if not self.workers[worker_type]:
                         del self.workers[worker_type]
                         
             except Exception as e:
                 self.logger.error(f"Error in cleanup thread: {e}")
-            time.sleep(1)  # Run cleanup every second
+            time.sleep(1)  # Läuft 1 mal pro sekunden
 
 # Starten des RPC Servers
 def serve():

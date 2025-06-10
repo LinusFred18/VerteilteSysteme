@@ -48,7 +48,7 @@ class TaskGridClient:
                 if not wait or (time.time() - start_time) > timeout:
                     return None
                     
-                time.sleep(1)  # Poll every second
+                time.sleep(1)  # 1 mal pro sekunde abfragen
                 
             except grpc.RpcError as e:
                 self.logger.error(f"Failed to get result: {e}")

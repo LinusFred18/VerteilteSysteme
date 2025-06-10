@@ -2,7 +2,7 @@
 
 ## Projekt Übersicht
 
-Taskgrid ist ein verteiltes System zum übernehmen von Aufgaben über Workern. Die Dokumentation hängt anbei als pdf.
+Taskgrid+ ist ein verteiltes System zum übernehmen von Aufgaben über Workern. Die Dokumentation hängt anbei als pdf.
 
 Info: je nach Mac Docker Version: "docker compose" statt "docker-compose"
 

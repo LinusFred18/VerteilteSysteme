@@ -22,16 +22,16 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
         self.stats = {
             "active_workers": 0,
             "pending_tasks": 0,
-            "pending_tasks_details": [],  # List of pending task details
+            "pending_tasks_details": [],
             "avg_processing_time": 0.0,
             "worker_types": {},
             "service_connections": {
                 "nameservice": False,
                 "dispatcher": False
             },
-            "task_type_stats": {},  # Detailed timing stats per task type
-            "active_worker_list": [],  # List of {type, address, status} dicts
-            "all_workers": defaultdict(dict)  # Track all workers ever seen
+            "task_type_stats": {},
+            "active_worker_list": [],
+            "all_workers": defaultdict(dict)
         }
         
         # Starte stats collection thread
@@ -59,19 +59,16 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
             task_type_stats=self.stats["task_type_stats"]
         )
 
+    # Überprüfe Verbindung zum Dispatcher / Namensdienst
     def _check_service_connection(self, address, service_name, max_retries=3):
-        """Check connection to a service with retries."""
         for attempt in range(max_retries):
             try:
                 with grpc.insecure_channel(address) as channel:
-                    # Create appropriate stub based on service
-                    if service_name == "nameservice":
+                    if service_name == "nameservice": # nameservice
                         stub = taskgrid_pb2_grpc.NameServiceStub(channel)
-                        # Try a simple request
                         stub.GetWorkerStats(taskgrid_pb2.WorkerStatsRequest())
                     else:  # dispatcher
                         stub = taskgrid_pb2_grpc.ClientServiceStub(channel)
-                        # Try a simple request
                         stub.GetTaskStats(taskgrid_pb2.TaskStatsRequest())
                     
                     self.stats["service_connections"][service_name] = True
@@ -80,7 +77,7 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
                     return True
             except Exception as e:
                 self.logger.warning(f"Attempt {attempt + 1}/{max_retries} to connect to {service_name} failed: {str(e)}")
-                time.sleep(min(2 ** attempt, 10))  # Exponential backoff, max 10 seconds
+                time.sleep(min(2 ** attempt, 10)) # 10s limit
         
         self.logger.error(f"Failed to connect to {service_name} after {max_retries} attempts")
         self.stats["service_connections"][service_name] = False
@@ -91,7 +88,7 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
         """Collect statistics from services."""
         while True:
             try:
-                # Check service connections first
+                # überprüfe verbindungen
                 ns_connected = self._check_service_connection(self.nameservice_address, "nameservice")
                 disp_connected = self._check_service_connection(self.dispatcher_address, "dispatcher")
 
@@ -100,54 +97,49 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
                     time.sleep(5)
                     continue
 
-                # Collect worker stats from nameservice if connected
+                # ---- nameservice statistiken ----
                 if ns_connected:
                     with grpc.insecure_channel(self.nameservice_address) as channel:
                         nameservice = taskgrid_pb2_grpc.NameServiceStub(channel)
                         worker_stats = nameservice.GetWorkerStats(taskgrid_pb2.WorkerStatsRequest())
                         
-                        # Get current active addresses and their types
+                        # aktive Worker
                         current_active_addresses = set(worker_stats.worker_addresses)
                         current_time = time.time()
-                        
-                        # Update active worker list and all_workers tracking
                         active_workers = []
                         worker_types_count = defaultdict(int)
 
-                        # Process all currently active workers
                         for addr in current_active_addresses:
-                            worker_type = worker_stats.worker_types.get(addr, "unknown")  # Get actual worker type
+                            worker_type = worker_stats.worker_types.get(addr, "unknown")
                             worker_types_count[worker_type] += 1
                             
-                            # Update all_workers with minimal info
                             self.stats["all_workers"][worker_type][addr] = {
                                 "address": addr,
                                 "last_seen": current_time,
                                 "type": worker_type
                             }
                             
-                            # Add to active workers list with status
                             active_workers.append({
                                 "type": worker_type,
                                 "address": addr,
                                 "status": "ACTIVE"
                             })
 
-                        # Clean up old workers from all_workers
+                        # Alte worker aufräumen
                         for worker_type in list(self.stats["all_workers"].keys()):
                             for addr in list(self.stats["all_workers"][worker_type].keys()):
                                 if addr not in current_active_addresses:
                                     last_seen = self.stats["all_workers"][worker_type][addr]["last_seen"]
                                     time_since_last_seen = current_time - last_seen
                                     
-                                    if time_since_last_seen > 30:  # Remove from all_workers after 30 seconds
+                                    if time_since_last_seen > 30:  # entfernen nach 30s
                                         del self.stats["all_workers"][worker_type][addr]
                                         if not self.stats["all_workers"][worker_type]:
                                             del self.stats["all_workers"][worker_type]
                                         continue
                                     
-                                    # Add to active_worker_list as inactive if recently seen
-                                    if time_since_last_seen <= 10:  # Show as inactive only if within 10 seconds
+                                    # Inaktiv
+                                    if time_since_last_seen <= 10:
                                         worker_types_count[worker_type] += 1
                                         active_workers.append({
                                             "type": worker_type,
@@ -155,7 +147,7 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
                                             "status": "INACTIVE"
                                         })
                         
-                        # Update stats
+                        # Statistiken updaten
                         self.stats["active_workers"] = len(current_active_addresses)
                         self.stats["worker_types"] = dict(worker_types_count)
                         self.stats["active_worker_list"] = sorted(
@@ -163,13 +155,13 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
                             key=lambda x: (x["type"], x["status"] != "ACTIVE", x["address"])
                         )
 
-                # Collect task stats from dispatcher if connected
+                # ---- dispatcher statistiken ----
                 if disp_connected:
                     with grpc.insecure_channel(self.dispatcher_address) as channel:
                         dispatcher = taskgrid_pb2_grpc.ClientServiceStub(channel)
                         task_stats = dispatcher.GetTaskStats(taskgrid_pb2.TaskStatsRequest())
                         
-                        # Get details of pending tasks
+                        # Pending tasks
                         pending_tasks = []
                         for task_id in range(task_stats.task_counter):
                             try:
@@ -187,7 +179,7 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
                             except grpc.RpcError:
                                 continue
                         
-                        # Update task stats with actual count from details
+                        # update statistiken
                         self.stats["pending_tasks_details"] = pending_tasks
                         self.stats["pending_tasks"] = len(pending_tasks)
                         
@@ -197,7 +189,7 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
                             task_type_stats[task_type] = self._convert_timing_stats_to_dict(stats)
                         self.stats["task_type_stats"] = task_type_stats
                         
-                        # Berechnet die overall average processing time
+                        # Average processing zeit
                         if task_type_stats:
                             avg_times = [stats["avg_time"] for stats in task_type_stats.values()]
                             if avg_times:
@@ -206,7 +198,7 @@ class MonitoringService(taskgrid_pb2_grpc.MonitoringServiceServicer):
             except Exception as e:
                 self.logger.error(f"Error collecting stats: {e}")
             
-            time.sleep(5)  # Update every 5 seconds
+            time.sleep(5)  # Update alle 5s
 
 # Erstellt die Flask app
 app = Flask(__name__)
@@ -253,5 +245,4 @@ if __name__ == '__main__':
     # Start REST server
     serve_rest('0.0.0.0', rest_port)
     
-    # Keep the gRPC server running
     grpc_server.wait_for_termination() 

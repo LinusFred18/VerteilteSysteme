@@ -51,68 +51,68 @@
     "average": {
       "a6c583b2efd6:54525": {
         "address": "a6c583b2efd6:54525",
-        "last_seen": 1749570263.85302,
+        "last_seen": 1749572174.47183,
         "type": "average"
       }
     },
     "hash": {
       "5de809edb123:57621": {
         "address": "5de809edb123:57621",
-        "last_seen": 1749570263.85302,
+        "last_seen": 1749572174.47183,
         "type": "hash"
       }
     },
     "length": {
       "bcc7686be717:58267": {
         "address": "bcc7686be717:58267",
-        "last_seen": 1749570263.85302,
+        "last_seen": 1749572174.47183,
         "type": "length"
       }
     },
     "lower": {
       "5856ecd258cf:47215": {
         "address": "5856ecd258cf:47215",
-        "last_seen": 1749570263.85302,
+        "last_seen": 1749572174.47183,
         "type": "lower"
       }
     },
     "prime": {
       "1348f6b8392b:47807": {
         "address": "1348f6b8392b:47807",
-        "last_seen": 1749570263.85302,
+        "last_seen": 1749572174.47183,
         "type": "prime"
       }
     },
     "reverse": {
       "1ff7cf41d748:42275": {
         "address": "1ff7cf41d748:42275",
-        "last_seen": 1749570263.85302,
+        "last_seen": 1749572174.47183,
         "type": "reverse"
       }
     },
     "sum": {
       "e8747558fc65:44459": {
         "address": "e8747558fc65:44459",
-        "last_seen": 1749570263.85302,
+        "last_seen": 1749572174.47183,
         "type": "sum"
       }
     },
     "upper": {
       "182b9c5936fd:59073": {
         "address": "182b9c5936fd:59073",
-        "last_seen": 1749570263.85302,
+        "last_seen": 1749572174.47183,
         "type": "upper"
       }
     },
     "wait": {
       "424fae498ffe:39839": {
         "address": "424fae498ffe:39839",
-        "last_seen": 1749570263.85302,
+        "last_seen": 1749572174.47183,
         "type": "wait"
       }
     }
   },
-  "avg_processing_time": 0,
+  "avg_processing_time": 0.185185185185185,
   "pending_tasks": 0,
   "pending_tasks_details": [],
   "service_connections": {
@@ -120,17 +120,59 @@
     "nameservice": true
   },
   "task_type_stats": {
+    "average": {
+      "avg_time": 0,
+      "last_time": 0,
+      "max_time": 0,
+      "recent_times": [0, 0, 0, 0, 0, 0, 0, 0]
+    },
+    "hash": {
+      "avg_time": 0,
+      "last_time": 0,
+      "max_time": 0,
+      "recent_times": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    },
+    "length": {
+      "avg_time": 0,
+      "last_time": 0,
+      "max_time": 0,
+      "recent_times": [0, 0, 0, 0, 0, 0]
+    },
+    "lower": {
+      "avg_time": 0,
+      "last_time": 0,
+      "max_time": 0,
+      "recent_times": [0, 0, 0, 0]
+    },
     "prime": {
       "avg_time": 0,
       "last_time": 0,
       "max_time": 0,
-      "recent_times": [0]
+      "recent_times": [0, 0, 0, 0, 0, 0, 0]
+    },
+    "reverse": {
+      "avg_time": 0,
+      "last_time": 0,
+      "max_time": 0,
+      "recent_times": [0, 0, 0, 0, 0]
     },
     "sum": {
       "avg_time": 0,
       "last_time": 0,
       "max_time": 0,
-      "recent_times": [0]
+      "recent_times": [0, 0, 0, 0, 0, 0, 0]
+    },
+    "upper": {
+      "avg_time": 0,
+      "last_time": 0,
+      "max_time": 0,
+      "recent_times": [0, 0, 0, 0, 0, 0, 0]
+    },
+    "wait": {
+      "avg_time": 1.66666666666667,
+      "last_time": 2,
+      "max_time": 3,
+      "recent_times": [2, 1, 1, 1, 1, 2, 3, 2, 2]
     }
   },
   "worker_types": {
