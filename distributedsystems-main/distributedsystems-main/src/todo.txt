@@ -1,6 +1,0 @@
-- doku
-- kommentieren von 
-    - monitor.py
-    - test_client.py
-    - worker.py
-- bei monitoring noch einbauen, dass auch die registrierten worker angezeigt werden
