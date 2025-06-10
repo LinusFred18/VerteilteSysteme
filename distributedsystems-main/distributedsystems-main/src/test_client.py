@@ -19,6 +19,10 @@ logging.basicConfig(
     ]
 )
 
+# Das ist die TestClient Klasse.
+# Sie erstellt eine alternative zum standart client, welche darauf ausgelegt ist das System zu testen.
+# Dafür sendet sie alle 30 Sekunden eine zufällige Task an den Dispatcher.
+# Die Argumente für die Tasks werden auch zufällig generiert.
 class TaskGridTestClient:
     def __init__(self, dispatcher_address):
         self.channel = grpc.insecure_channel(dispatcher_address)
