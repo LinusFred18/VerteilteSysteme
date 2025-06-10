@@ -69,7 +69,7 @@ class TaskGridTestClient:
             raise
 
     # Erhält die Ergebnisse der Tasks vom Worker
-    def get_result(self, task_id, wait=True, timeout=30):
+    def get_result(self, task_id, wait=True, timeout=30):  # Increased timeout to 30 seconds
         start_time = time.time()
         while True:
             try:
@@ -81,13 +81,20 @@ class TaskGridTestClient:
                     self.logger.info(f"Task {task_id} completed successfully. Result: {response.task.result}")
                     return response.task.result
                 elif response.task.status == "FAILED":
-                    self.logger.error(f"Task {task_id} failed: {response.task.result}")
-                    raise Exception(f"Task failed: {response.task.result}")
+                    error_msg = response.task.result
+                    if "No worker available" in error_msg:
+                        self.logger.warning("Task service unavailable")
+                    elif "Service unavailable" in error_msg:
+                        self.logger.warning("Task service unavailable")
+                    else:
+                        self.logger.error(f"Task {task_id} failed: {error_msg}")
+                    raise Exception(error_msg)
                 
                 if not wait or (time.time() - start_time) > timeout:
+                    self.logger.warning(f"Task {task_id} did not complete within {timeout} seconds")
                     return None
                     
-                time.sleep(1)
+                time.sleep(1)  # Poll every second
                 
             except grpc.RpcError as e:
                 self.logger.error(f"Failed to get result: {e}")
@@ -104,15 +111,24 @@ def main():
             task_type, payload = client.generate_random_task()
             try:
                 task_id = client.send_task(task_type, payload)
-                result = client.get_result(task_id)
-                
-                # Output für einzelne Tasks mit Zeit, Task-Typ, Input, Output, etc.
-                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                logging.info(f"TEST SUMMARY [{current_time}]:")
-                logging.info(f"  Task Type: {task_type}")
-                logging.info(f"  Input: {payload}")
-                logging.info(f"  Output: {result}")
-                logging.info("-" * 50)
+                try:
+                    result = client.get_result(task_id)
+                    
+                    if result is not None:
+                        # Output für einzelne Tasks mit Zeit, Task-Typ, Input, Output, etc.
+                        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        logging.info(f"TEST SUMMARY [{current_time}]:")
+                        logging.info(f"  Task Type: {task_type}")
+                        logging.info(f"  Input: {payload}")
+                        logging.info(f"  Output: {result}")
+                        logging.info("-" * 50)
+                    else:
+                        logging.warning(f"Task {task_id} timed out")
+                except Exception as e:
+                    if "No worker available" in str(e) or "Service unavailable" in str(e):
+                        logging.warning("Task service unavailable")
+                    else:
+                        logging.error(f"Error getting result: {e}")
                 
             except Exception as e:
                 logging.error(f"Error in test iteration: {e}")

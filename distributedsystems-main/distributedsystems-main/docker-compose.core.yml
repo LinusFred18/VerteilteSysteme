@@ -1,0 +1,54 @@
+services:
+  nameservice:
+    build:
+      context: .
+      dockerfile: docker/nameservice.Dockerfile
+    ports:
+      - "50051:50051"
+    networks:
+      - taskgrid
+
+  dispatcher:
+    build:
+      context: .
+      dockerfile: docker/dispatcher.Dockerfile
+    ports:
+      - "50052:50052"
+    environment:
+      - NAMESERVICE_ADDRESS=nameservice:50051
+    depends_on:
+      - nameservice
+    networks:
+      - taskgrid
+
+  monitoring:
+    build:
+      context: .
+      dockerfile: docker/monitoring.Dockerfile
+    ports:
+      - "50053:50053"
+      - "8080:8080"
+    environment:
+      - NAMESERVICE_ADDRESS=nameservice:50051
+      - DISPATCHER_ADDRESS=dispatcher:50052
+    depends_on:
+      - nameservice
+      - dispatcher
+    networks:
+      - taskgrid
+
+  test-client:
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile
+    environment:
+      - DISPATCHER_ADDRESS=dispatcher:50052
+    depends_on:
+      - dispatcher
+    networks:
+      - taskgrid
+
+networks:
+  taskgrid:
+    name: taskgrid
+    driver: bridge

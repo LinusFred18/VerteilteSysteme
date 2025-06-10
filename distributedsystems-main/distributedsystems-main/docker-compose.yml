@@ -93,7 +93,6 @@ services:
     networks:
       - taskgrid
 
-      
   worker-length:
     build:
       context: .
@@ -184,4 +183,5 @@ services:
 
 networks:
   taskgrid:
+    name: taskgrid
     driver: bridge

@@ -1,0 +1,97 @@
+x-worker-template: &worker-template
+  build:
+    context: .
+    dockerfile: docker/worker.Dockerfile
+  environment:
+    - NAMESERVICE_ADDRESS=host.docker.internal:50051
+  networks:
+    - taskgrid
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  worker-reverse:
+    <<: *worker-template
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=reverse
+        - PORT=0
+
+  worker-sum:
+    <<: *worker-template
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=sum
+        - PORT=0
+
+  worker-hash:
+    <<: *worker-template
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=hash
+        - PORT=0
+
+  worker-upper:
+    <<: *worker-template
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=upper
+        - PORT=0
+
+  worker-wait:
+    <<: *worker-template
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=wait
+        - PORT=0
+
+  worker-length:
+    <<: *worker-template
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=length
+        - PORT=0
+
+  worker-average:
+    <<: *worker-template
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=average
+        - PORT=0
+
+  worker-lower:
+    <<: *worker-template
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=lower
+        - PORT=0
+
+  worker-prime:
+    <<: *worker-template
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        - WORKER_TYPE=prime
+        - PORT=0
+
+networks:
+  taskgrid:
+    name: taskgrid
+    external: true

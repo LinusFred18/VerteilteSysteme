@@ -85,6 +85,7 @@ message WorkerStatsRequest {}
 message WorkerStatsResponse {
     map<string, int32> worker_counts = 1;  // type -> count
     repeated string worker_addresses = 2;   // list of all worker addresses
+    map<string, string> worker_types = 3;  // address -> type mapping
 }
 
 message TaskTimingStats {
@@ -99,6 +100,7 @@ message TaskStatsRequest {}
 message TaskStatsResponse {
     int32 pending_tasks = 1;
     map<string, TaskTimingStats> task_stats = 2;  // type -> timing stats
+    int32 task_counter = 3;  // Total number of tasks created
 }
 
 // Monitoring Service
